@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang='pt-BR'>
+  <head>
+    <meta charset='utf-8'>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendario Butantan</title>
+    <link rel="icon" href="images/42446.png" type="image/png">
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js'></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://unpkg.com/popper.js/dist/umd/popper.min.js"></script>
+    <script src="https://unpkg.com/tooltip.js/dist/umd/tooltip.min.js"></script>
+    <!-- <script src="stylesheet" href="js/customsets.js"></script> -->
+    <link rel="stylesheet" href="css/styles.css">
+    <header>
+      <h1 class="textHeader">Agênda Butantan</h1>
+    </header>
+      <script>
+      // .catch(error => console.error('Erro ao carregar o CSV:', error));
+
+      document.addEventListener('DOMContentLoaded', function() {
+      var calendarEl = document.getElementById('calendar');
+      var calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'multiMonthYear',
+        locale: 'pt-BR',
+        selectable: true,
+        headerToolbar: {
+          left: 'title',
+          right: 'prev,next,multiMonthYear,timeGridWeek,timeGridDay'
+        },
+        eventDidMount: function(info) {
+          var tooltip = new Tooltip(info.el, {
+            title: info.event.extendedProps.description,
+            placement: 'top',
+            trigger: 'hover',
+            container: 'body',
+            html: true
+          });
+        },
+        events: function(fetchInfo, successCallback, failureCallback) {
+          fetch('csv/events.csv')
+            .then(response => response.text()) // Lê o CSV como texto
+            .then(data => {
+              const linhas = data.trim().split('\n'); // Divide o CSV em linhas
+              const cabecalho = linhas[0].split(','); // Captura o cabeçalho (títulos das colunas)
+              
+              const eventos = linhas.slice(1).map(linha => {
+                const valores = linha.split(','); // Divide cada linha em colunas
+                const evento = {};
+                
+                // Associa cada valor com o respectivo título do cabeçalho
+                cabecalho.forEach((chave, index) => {
+                  evento[chave.trim()] = valores[index].trim();
+                });
+                
+                return evento; // Retorna o objeto do evento
+              });
+              // Converte os eventos para o formato esperado pelo FullCalendar
+              const eventosFullCalendar = eventos.map(evento => ({
+                title: evento.title,
+                description: evento.description,
+                start: evento.start,
+                end: evento.end,
+                rendering: evento.rendering
+              }));
+
+              // Passa os eventos para o FullCalendar
+              successCallback(eventosFullCalendar);
+            })
+            .catch(error => {
+              console.error('Erro ao carregar eventos:', error);
+              failureCallback(error);
+            });
+        },
+      });
+      
+      calendar.render();
+    });
+      async function verificarFeriado(ano) {
+        try {
+          const response = await fetch(
+            `https://brasilapi.com.br/api/feriados/v1/${ano}`
+          );
+          if (response.ok) {
+            const feriadosList = document.getElementById("lista_feriados");
+            const feriados = await response.json();
+            console.log(feriados);
+
+            feriadosList.innerHTML = feriados
+              .map((feriado) => {
+                const dataFormatada = new Date(feriado.date).toLocaleDateString("pt-BR");
+                return `<li>${dataFormatada}: ${feriado.name}</li>`;
+              })
+              .join("");
+          } 
+        } catch (error) {
+          console.error(`Erro [3]: Fazer a requisição ${error.message}`);
+          // Em caso de erro, retorne false ou trate de acordo com sua lógica
+          alert("Erro [2]: Realizar cadastro.");
+          return false;
+        }
+      };
+    </script>
+  </head>
+
+
+
+  <body>
+    <div class="conteiner">
+      <div class="boxB">
+        <div class="boxtitle"><h2><strong>Feriados Nacionais:</strong></h2></div>
+        <form id="formsAno">
+          <select id="selecaoAno" name="ano">
+            <option disabled selected value="empty">SELECIONE O ANO</option>
+            <option value="2025">2025</option>
+            <option value="2024">2024</option>
+            <option value="2023">2023</option>
+            <option value="2022">2022</option>
+            <option value="2021">2021</option>
+            <option value="2020">2020</option>
+          </select>
+          <button type="submit" id="submitButton">Click!</button>
+        </form>
+        <ul id="lista_feriados"></ul>
+      </div>
+      
+      <div class="boxS">
+        <div class="boxtitle"><h2><strong>Legenda:</strong></h2></div>
+        <p>
+          <div class="textLegend">
+          <li>&#x1F535 Evento</li>
+          <li><span 
+          style="background-color: #3788d8;
+          color: aliceblue;
+          border-radius: 3px;
+          padding: 1.2px;">Evento Full Day</ol>
+          </div>
+        </p>
+      </div>
+    </div>
+    <div id='calendar'></div>
+
+
+
+    <script>
+    // renderiza os feriados
+    function getAnoFromUrl() {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get("ano"); // Retorna o valor do parâmetro 'ano'
+    }
+    const ano = getAnoFromUrl() || "2025";
+    verificarFeriado(ano);
+
+    const button = document.getElementById('submitButton');
+    const select = document.getElementById('selecaoAno');
+
+    // cria uma função para quando o evento de click ocorrer
+    button.addEventListener('click', function () {
+      // captura o valor selecionado
+      const selectedYear = select.value;
+      if(selectedYear === "empty"){
+        alert('Erro [3]: Selecione um ano antes de continuar.');
+        return;
+      } else{
+      //variavel url: localiza a barra de pesquisa + add o ?ano= + ano selecionado
+      const URL = `${window.location.pathname}?ano=${selectedYear}`;
+      // executa a URL
+      window.location.href = URL;
+      }
+    });
+    </script>
+  </body>
+</html>
